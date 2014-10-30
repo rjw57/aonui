@@ -2,6 +2,7 @@ package main
 
 import "aonui"
 import "fmt"
+import "io"
 import "log"
 import "os"
 import "path/filepath"
@@ -44,11 +45,20 @@ func main() {
 
 	baseDir := "/localdata/rjw57/cusf/aonui"
 
-	for _, dataset := range run.FetchDatasets() {
-		filename := filepath.Join(baseDir, dataset.Identifier)
-		log.Print("Fetching dataset to ", filename)
+	// Open the output file
+	filename := filepath.Join(baseDir, run.Identifier)
+	log.Print("Fetching run to ", filename)
+	output, err := os.Create(filename)
+	if err != nil {
+		log.Print("Error creating output: ", err)
+		return
+	}
 
-		err := fetchDataset(filename, dataset, paramsOfInterest)
+	// Ensure the file is closed on function exit
+	defer output.Close()
+
+	for _, dataset := range run.FetchDatasets() {
+		err := fetchDataset(output, dataset, paramsOfInterest)
 		if err != nil {
 			log.Print("Error fetching dataset: ", err)
 		}
@@ -70,7 +80,7 @@ func (bytes ByteCount) String() string {
 	}
 }
 
-func fetchDataset(filename string, dataset *aonui.Dataset, paramsOfInterest []string) error {
+func fetchDataset(output io.Writer, dataset *aonui.Dataset, paramsOfInterest []string) error {
 	// Fetch inventory for this dataset
 	inventory, err := dataset.FetchInventory()
 	if err != nil {
@@ -95,22 +105,14 @@ func fetchDataset(filename string, dataset *aonui.Dataset, paramsOfInterest []st
 		}
 	}
 
-	// Open the output file
-	output, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-
-	// Ensure the file is closed on function exit
-	defer output.Close()
-
+	log.Print("Fetching dataset: ", dataset.URL)
 	log.Print(fmt.Sprintf("Fetching %d records (%v)", len(fetchItems), ByteCount(totalToFetch)))
 	start := time.Now()
-	err = dataset.FetchAndWriteRecords(output, fetchItems)
+	fetched, err := dataset.FetchAndWriteRecords(output, fetchItems)
 	if err != nil {
 		return err
 	}
-	fetchSpeed := int64(float64(totalToFetch) / time.Since(start).Seconds())
+	fetchSpeed := int64(float64(fetched) / time.Since(start).Seconds())
 	log.Print(fmt.Sprintf("Fetched at %v/sec", ByteCount(fetchSpeed)))
 
 	return nil

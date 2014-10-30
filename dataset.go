@@ -58,39 +58,38 @@ func (ds *Dataset) InventoryURL() *url.URL {
 	return &inURL
 }
 
-func (ds *Dataset) FetchAndWriteRecords(output io.Writer, records []*InventoryItem) error {
+func (ds *Dataset) FetchAndWriteRecords(output io.Writer,
+	records []*InventoryItem) (int64, error) {
 	// Create a new HTTP client since we'll be adding custom headers
 	client := new(http.Client)
 
 	// Create specific request
 	req, err := http.NewRequest("GET", ds.URL.String(), nil)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// Add a Range header to request specifying which bytes we require.
 	rangeSpecs := []string{}
 	for _, r := range records {
 		// Note that the range is *inclusive*.
-		rangeSpec := fmt.Sprintf("%d-%d", r.Offset, r.Offset + r.Extent - 1)
+		rangeSpec := fmt.Sprintf("%d-%d", r.Offset, r.Offset+r.Extent-1)
 		rangeSpecs = append(rangeSpecs, rangeSpec)
 	}
-	req.Header.Add("Range", "bytes=" + strings.Join(rangeSpecs, ","))
+	req.Header.Add("Range", "bytes="+strings.Join(rangeSpecs, ","))
 
 	// Fire off request
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer resp.Body.Close()
 
 	// Check we get partial content
 	if resp.StatusCode != http.StatusPartialContent {
-		return fmt.Errorf("Expected HTTP partial content, got %v", resp.StatusCode)
+		return 0, fmt.Errorf("Expected HTTP partial content, got %v", resp.StatusCode)
 	}
 
 	// Everything looks good, start copying
-	io.Copy(output, resp.Body)
-
-	return nil
+	return io.Copy(output, resp.Body)
 }
