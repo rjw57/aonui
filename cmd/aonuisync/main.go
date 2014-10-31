@@ -1,28 +1,20 @@
 package main
 
-import "aonui"
-import "fmt"
-import "io"
-import "log"
-import "os"
-import "path/filepath"
-import "sort"
-import "time"
+import (
+	"aonui"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
+	"sort"
+	"sync"
+	"time"
+)
 
-// Sorting runs by date
-type ByDate []*aonui.Run
-
-func (d ByDate) Len() int {
-	return len(d)
-}
-
-func (d ByDate) Swap(i, j int) {
-	d[i], d[j] = d[j], d[i]
-}
-
-func (d ByDate) Less(i, j int) bool {
-	return d[i].When.Before(d[j].When)
-}
+const maximumSimultaneousDownloads = 5
+var fetchSem = make(chan int, maximumSimultaneousDownloads)
 
 func main() {
 	// Fetch all of the runs
@@ -40,13 +32,12 @@ func main() {
 	run := runs[1]
 	log.Print("Fetching data for run at", run.When)
 
-	// Which records are we interested in?
-	paramsOfInterest := []string{"HGT", "UGRD", "VGRD"}
-
 	baseDir := "/localdata/rjw57/cusf/aonui"
 
+	datasets := run.FetchDatasets()
+
 	// Open the output file
-	filename := filepath.Join(baseDir, run.Identifier)
+	filename := filepath.Join(baseDir, run.Identifier + ".grib2")
 	log.Print("Fetching run to ", filename)
 	output, err := os.Create(filename)
 	if err != nil {
@@ -57,27 +48,67 @@ func main() {
 	// Ensure the file is closed on function exit
 	defer output.Close()
 
-	for _, dataset := range run.FetchDatasets() {
-		err := fetchDataset(output, dataset, paramsOfInterest)
-		if err != nil {
-			log.Print("Error fetching dataset: ", err)
+	// Concatenate temporary files as they are finished
+	fetchStart := time.Now()
+	for fn := range fetchDatasetsData(baseDir, datasets) {
+		if f, err := os.Open(fn); err != nil {
+			log.Print("Error copying temporary file: ", err)
+		} else {
+			io.Copy(output, f)
 		}
+		os.Remove(fn)
 	}
+
+	fetchDuration := time.Since(fetchStart)
+	fi, err := output.Stat()
+	if err != nil {
+		log.Print("Error: ", err)
+		return
+	}
+	log.Print(fmt.Sprintf("Overall download speed: %v/sec",
+		ByteCount(float64(fi.Size())/fetchDuration.Seconds())))
 }
 
-type ByteCount int64
+func fetchDatasetsData(baseDir string, datasets []*aonui.Dataset) chan string {
+	// Which records are we interested in?
+	paramsOfInterest := []string{"HGT", "UGRD", "VGRD"}
 
-func (bytes ByteCount) String() string {
-	switch {
-	case bytes < 2<<10:
-		return fmt.Sprintf("%dB", bytes)
-	case bytes < 2<<20:
-		return fmt.Sprintf("%dKiB", bytes>>10)
-	case bytes < 2<<30:
-		return fmt.Sprintf("%dMiB", bytes>>20)
-	default:
-		return fmt.Sprintf("%dGiB", bytes>>30)
+	var wg sync.WaitGroup
+	tmpFilesChan := make(chan string)
+
+	for _, ds := range datasets {
+		wg.Add(1)
+
+		go func(dataset *aonui.Dataset) {
+			defer wg.Done()
+
+			fetchSem <- 1
+			defer func() { <-fetchSem }()
+
+			// Create a temporary file for output
+			tmpFile, err := ioutil.TempFile(baseDir, "dataset-")
+			if err != nil {
+				log.Print("Error creating temporary file: ", err)
+			}
+			defer tmpFile.Close()
+
+			// Perform download
+			if err := fetchDataset(tmpFile, dataset, paramsOfInterest); err != nil {
+				log.Print("Error fetching dataset: ", err)
+			}
+
+			tmpFilesChan<-tmpFile.Name()
+		}(ds)
 	}
+
+	// Launch a goroutine to wait for all datasets to be downloaded and
+	// then close the channel.
+	go func() {
+		wg.Wait()
+		close(tmpFilesChan)
+	}()
+
+	return tmpFilesChan
 }
 
 func fetchDataset(output io.Writer, dataset *aonui.Dataset, paramsOfInterest []string) error {
@@ -105,15 +136,11 @@ func fetchDataset(output io.Writer, dataset *aonui.Dataset, paramsOfInterest []s
 		}
 	}
 
-	log.Print("Fetching dataset: ", dataset.URL)
-	log.Print(fmt.Sprintf("Fetching %d records (%v)", len(fetchItems), ByteCount(totalToFetch)))
-	start := time.Now()
-	fetched, err := dataset.FetchAndWriteRecords(output, fetchItems)
-	if err != nil {
+	log.Print(fmt.Sprintf("Fetching %d records from %v (%v)",
+		len(fetchItems), dataset.Identifier, ByteCount(totalToFetch)))
+	if _, err := dataset.FetchAndWriteRecords(output, fetchItems); err != nil {
 		return err
 	}
-	fetchSpeed := int64(float64(fetched) / time.Since(start).Seconds())
-	log.Print(fmt.Sprintf("Fetched at %v/sec", ByteCount(fetchSpeed)))
 
 	return nil
 }
