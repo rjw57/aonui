@@ -1,7 +1,7 @@
 package main
 
 import (
-	"aonui"
+	aonui "github.com/rjw57/aonui"
 	"fmt"
 	"io"
 	"io/ioutil"
