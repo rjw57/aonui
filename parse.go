@@ -11,9 +11,14 @@ import "strings"
 import "time"
 
 const (
-	runsRoot       = "http://ftp.ncep.noaa.gov/data/nccf/com/gfs/prod/"
+	runsRoot       = "http://www.ftp.ncep.noaa.gov/data/nccf/com/gfs/prod/"
 	runPattern     = `^gfs\.(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})$`
 	datasetPattern = `^gfs\.t(?P<runHour>\d{2})z.(?P<typeId>pgrb2b?f)(?P<fcstHour>\d+)$`
+	/*
+	runsRoot       = "http://www.ftp.ncep.noaa.gov/data/nccf/com/gfs/para/"
+	runPattern     = `^gfs\.(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})$`
+	datasetPattern = `^gfs\.t(?P<runHour>\d{2})z\.(?P<typeId>pgrb2b?)\.0p25\.f(?P<fcstHour>\d+)$`
+	*/
 )
 
 type nodeFunc func(node *html.Node)
