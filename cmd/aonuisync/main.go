@@ -190,16 +190,16 @@ func fetchDatasetsData(tfs *TemporaryFileSource, datasets []*aonui.Dataset) chan
 			fetchSem <- 1
 			defer func() { <-fetchSem }()
 
-			// Create a temporary file for output
-			tmpFile, err := tfs.Create()
-			if err != nil {
-				log.Print("Error creating temporary file: ", err)
-			}
-			defer tmpFile.Close()
-
 			// Perform download. Attempt download repeatedly
 			maximumTries := dataset.Run.Source.FetchStrategy.MaximumRetries
+			var tmpFile *os.File
 			for tries := 0; tries < maximumTries; tries++ {
+				// Create a temporary file for output
+				tmpFile, err = tfs.Create()
+				if err != nil {
+					log.Print("Error creating temporary file: ", err)
+				}
+
 				log.Print("Fetching ", dataset.Identifier,
 					" (try ", tries+1, " of ", maximumTries, ")")
 				err := fetchDataset(tmpFile, dataset, paramsOfInterest)
@@ -209,11 +209,21 @@ func fetchDatasetsData(tfs *TemporaryFileSource, datasets []*aonui.Dataset) chan
 					log.Print("Error fetching dataset: ", err)
 				}
 
+				// Remove this temporary file
+				tmpFile.Close()
+				tfs.Remove(tmpFile)
+				tmpFile = nil
+
 				// Sleep until the next try
 				time.Sleep(trySleepDuration)
 			}
 
-			tmpFilesChan <- tmpFile
+			if tmpFile == nil {
+				log.Print("error: failed to download ", dataset.Identifier)
+			} else {
+				tmpFile.Close()
+				tmpFilesChan <- tmpFile
+			}
 		}(ds)
 	}
 
