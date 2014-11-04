@@ -58,8 +58,7 @@ func (ds *Dataset) InventoryURL() *url.URL {
 	return &inURL
 }
 
-func (ds *Dataset) FetchAndWriteRecords(output io.Writer,
-	records []*InventoryItem) (int64, error) {
+func (ds *Dataset) FetchAndWriteRecords(output io.Writer, records []*InventoryItem) (int64, error) {
 	// Create a new HTTP client since we'll be adding custom headers
 	client := new(http.Client)
 

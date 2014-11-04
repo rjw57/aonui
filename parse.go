@@ -10,17 +10,6 @@ import "strconv"
 import "strings"
 import "time"
 
-const (
-	runsRoot       = "http://www.ftp.ncep.noaa.gov/data/nccf/com/gfs/prod/"
-	runPattern     = `^gfs\.(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})$`
-	datasetPattern = `^gfs\.t(?P<runHour>\d{2})z.(?P<typeId>pgrb2b?f)(?P<fcstHour>\d+)$`
-	/*
-	runsRoot       = "http://www.ftp.ncep.noaa.gov/data/nccf/com/gfs/para/"
-	runPattern     = `^gfs\.(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})$`
-	datasetPattern = `^gfs\.t(?P<runHour>\d{2})z\.(?P<typeId>pgrb2b?)\.0p25\.f(?P<fcstHour>\d+)$`
-	*/
-)
-
 type nodeFunc func(node *html.Node)
 
 // Walk a HTML parse tree in a depth first manner calling nodeFn for each node.
@@ -42,7 +31,7 @@ type parseRunsContext struct {
 
 // Parse an individual node from a HTML parse tree looking for an anchor
 // pointing to a GFS run. If the node is a GFS run, send the run along out.
-func (ctx *parseRunsContext) matchRunNode(node *html.Node, out chan *Run) {
+func (ctx *parseRunsContext) matchRunNode(node *html.Node, ds *DataSource, out chan *Run) {
 	// Is this node an anchor tag? If not, just return signalling completion.
 	if node.Type != html.ElementNode || node.Data != "a" {
 		return
@@ -92,41 +81,54 @@ func (ctx *parseRunsContext) matchRunNode(node *html.Node, out chan *Run) {
 		}
 
 		when := time.Date(year, time.Month(month), day, hour, 0, 0, 0, time.UTC)
-		run := &Run{Identifier: identifier, URL: url, When: when}
+		run := &Run{Source: ds, Identifier: identifier, URL: url, When: when}
 
 		// Send run to output channel
 		out <- run
 	}
 }
 
-func fetchAndParseRuns(runChannel chan *Run) {
-	// Ensure channel is closed when this function exits
-	defer close(runChannel)
-
-	// Form base URL (should never fail as this is a constant)
-	baseURL, err := url.Parse(runsRoot)
+// Fetch available runs in a dataset. Note that partial runs (i.e. those with
+// only some of the datasets uploaded) will also be returned and so one should
+// be careful to check the number of datasets matches what you expect.
+func (ds *DataSource) FetchRuns() ([]*Run, error) {
+	// Form base URL
+	baseURL, err := url.Parse(ds.Root)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// Compile regexp for matching run name
-	runRegexp, err := regexp.Compile(runPattern)
+	runRegexp, err := regexp.Compile(ds.RunPattern)
 	if err != nil {
-		log.Fatal(err)
-		return
+		return nil, err
 	}
 
 	// Fetch runs
-	doc, err := getAndParse(runsRoot)
+	doc, err := getAndParse(ds.Root, ds.FetchStrategy)
 	if err != nil {
-		return
+		return nil, err
 	}
+
+	// A channel which can receive runs as they're parsed
+	runChan := make(chan *Run)
 
 	// Walk entire parse tree...
 	ctx := &parseRunsContext{BaseURL: baseURL, RunRegexp: runRegexp}
-	walkNodeTree(doc, func(node *html.Node) {
-		ctx.matchRunNode(node, runChannel)
-	})
+	go func(c chan *Run, ds *DataSource, ctx *parseRunsContext) {
+		defer close(c)
+		walkNodeTree(doc, func(node *html.Node) {
+			ctx.matchRunNode(node, ds, c)
+		})
+	}(runChan, ds, ctx)
+
+	// Return runs
+	runs := []*Run{}
+	for ds := range runChan {
+		runs = append(runs, ds)
+	}
+
+	return runs, nil
 }
 
 type parseDatasetsContext struct {
@@ -134,27 +136,38 @@ type parseDatasetsContext struct {
 	DatasetRegexp *regexp.Regexp
 }
 
-func (run *Run) fetchAndParseDatasets(c chan *Dataset) {
-	// Ensure the channel is closed when this function returns
-	defer close(c)
-
+// Fetch individual datasets from a run.
+func (run *Run) FetchDatasets() ([]*Dataset, error) {
 	// Compile regexp for matching dataset name
-	datasetRegexp, err := regexp.Compile(datasetPattern)
+	datasetRegexp, err := regexp.Compile(run.Source.DatasetPattern)
 	if err != nil {
-		log.Fatal(err)
-		return
+		return nil, err
 	}
 
-	doc, err := getAndParse(run.URL.String())
+	doc, err := getAndParse(run.URL.String(), run.Source.FetchStrategy)
 	if err != nil {
-		return
+		return nil, err
 	}
+
+	// A channel which can receive datasets as they're parsed
+	datasetChan := make(chan *Dataset)
 
 	// Walk parse tree...
 	ctx := &parseDatasetsContext{Run: run, DatasetRegexp: datasetRegexp}
-	walkNodeTree(doc, func(node *html.Node) {
-		ctx.matchDatasetNode(node, c)
-	})
+	go func(c chan *Dataset, ctx *parseDatasetsContext) {
+		defer close(c)
+		walkNodeTree(doc, func(node *html.Node) {
+			ctx.matchDatasetNode(node, c)
+		})
+	}(datasetChan, ctx)
+
+	// Return datasets
+	datasets := []*Dataset{}
+	for ds := range datasetChan {
+		datasets = append(datasets, ds)
+	}
+
+	return datasets, nil
 }
 
 func (ctx *parseDatasetsContext) matchDatasetNode(node *html.Node, out chan *Dataset) {

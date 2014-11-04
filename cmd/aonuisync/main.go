@@ -1,8 +1,9 @@
 package main
 
 import (
-	aonui "github.com/rjw57/aonui"
+	"flag"
 	"fmt"
+	aonui "github.com/rjw57/aonui"
 	"io"
 	"io/ioutil"
 	"log"
@@ -14,15 +15,31 @@ import (
 )
 
 const maximumSimultaneousDownloads = 5
+const maximumTries = 4
+
+// Global semaphore used to limit the number of simultaneous downloads
 var fetchSem = make(chan int, maximumSimultaneousDownloads)
 
 func main() {
+	// Command-line flags
+	var (
+		baseDir string
+	)
+
+	// Parse command line
+	flag.StringVar(&baseDir, "basedir", ".", "directory to download data to")
+	flag.Parse()
+
 	// Fetch all of the runs
-	runs := aonui.FetchRuns()
+	runs, err := aonui.GFSHalfDegreeDataset.FetchRuns()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Sort by *descending* date
 	sort.Sort(sort.Reverse(ByDate(runs)))
 
+	// Check that we have found enough runs
 	if len(runs) < 2 {
 		log.Print("Not enough runs found.")
 		return
@@ -30,14 +47,16 @@ func main() {
 
 	// Choose the penultimate run
 	run := runs[1]
-	log.Print("Fetching data for run at", run.When)
+	log.Print("Fetching data for run at ", run.When)
 
-	baseDir := "/localdata/rjw57/cusf/aonui"
-
-	datasets := run.FetchDatasets()
+	// Get datasets for this run
+	datasets, err := run.FetchDatasets()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Open the output file
-	filename := filepath.Join(baseDir, run.Identifier + ".grib2")
+	filename := filepath.Join(baseDir, run.Identifier+".grib2")
 	log.Print("Fetching run to ", filename)
 	output, err := os.Create(filename)
 	if err != nil {
@@ -76,6 +95,11 @@ func fetchDatasetsData(baseDir string, datasets []*aonui.Dataset) chan string {
 	var wg sync.WaitGroup
 	tmpFilesChan := make(chan string)
 
+	trySleepDuration, err := time.ParseDuration("10s")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	for _, ds := range datasets {
 		wg.Add(1)
 
@@ -92,12 +116,22 @@ func fetchDatasetsData(baseDir string, datasets []*aonui.Dataset) chan string {
 			}
 			defer tmpFile.Close()
 
-			// Perform download
-			if err := fetchDataset(tmpFile, dataset, paramsOfInterest); err != nil {
-				log.Print("Error fetching dataset: ", err)
+			// Perform download. Attempt download repeatedly
+			for tries := 0; tries < maximumTries; tries++ {
+				log.Print("Fetching ", dataset.Identifier,
+					" (try ", tries+1, " of ", maximumTries, ")")
+				err := fetchDataset(tmpFile, dataset, paramsOfInterest)
+				if err == nil {
+					break
+				} else {
+					log.Print("Error fetching dataset: ", err)
+				}
+
+				// Sleep until the next try
+				time.Sleep(trySleepDuration)
 			}
 
-			tmpFilesChan<-tmpFile.Name()
+			tmpFilesChan <- tmpFile.Name()
 		}(ds)
 	}
 
