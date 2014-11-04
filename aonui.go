@@ -20,6 +20,9 @@ type DataSource struct {
 
 	// Strategy to use when fetching data
 	FetchStrategy FetchStrategy
+
+	// Maximum forecast hour to fetch (or 0 to fetch all)
+	MaxForecastHour int
 }
 
 // Default fetch strategy
@@ -38,10 +41,11 @@ var GFSQuarterDegreeDataset = DataSource{
 
 // The original 0.5 degree resolution GRIBs from the Global Forecast System (GFS).
 var GFSHalfDegreeDataset = DataSource{
-	Root:           "http://www.ftp.ncep.noaa.gov/data/nccf/com/gfs/prod/",
-	RunPattern:     `^gfs\.(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})$`,
-	DatasetPattern: `^gfs\.t(?P<runHour>\d{2})z.(?P<typeId>pgrb2b?f)(?P<fcstHour>\d+)$`,
-	FetchStrategy:  DefaultFetchStrategy,
+	Root:            "http://www.ftp.ncep.noaa.gov/data/nccf/com/gfs/prod/",
+	RunPattern:      `^gfs\.(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})$`,
+	DatasetPattern:  `^gfs\.t(?P<runHour>\d{2})z.(?P<typeId>pgrb2b?f)(?P<fcstHour>\d+)$`,
+	FetchStrategy:   DefaultFetchStrategy,
+	MaxForecastHour: 200,
 }
 
 // A description of an individual run of the GFS.

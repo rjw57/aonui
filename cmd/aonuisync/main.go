@@ -77,14 +77,22 @@ func main() {
 	// Command-line flags
 	var (
 		baseDir string
+		highRes bool
 	)
 
 	// Parse command line
 	flag.StringVar(&baseDir, "basedir", ".", "directory to download data to")
+	flag.BoolVar(&highRes, "highres", false, "download 0.25deg data as opposed to 0.5deg")
 	flag.Parse()
 
+	// Which source to use?
+	src := aonui.GFSHalfDegreeDataset
+	if highRes {
+		src = aonui.GFSQuarterDegreeDataset
+	}
+
 	// Fetch all of the runs
-	runs, err := aonui.GFSQuarterDegreeDataset.FetchRuns()
+	runs, err := src.FetchRuns()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -170,6 +178,11 @@ func fetchDatasetsData(tfs *TemporaryFileSource, datasets []*aonui.Dataset) chan
 	}
 
 	for _, ds := range datasets {
+		// If we have a max forecast hour, and this dataset is later, skip
+		if ds.Run.Source.MaxForecastHour > 0 && ds.ForecastHour > ds.Run.Source.MaxForecastHour {
+			continue
+		}
+
 		wg.Add(1)
 
 		go func(dataset *aonui.Dataset) {
