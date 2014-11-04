@@ -19,7 +19,6 @@ import (
 )
 
 const maximumSimultaneousDownloads = 5
-const maximumTries = 4
 
 // Global semaphore used to limit the number of simultaneous downloads
 var fetchSem = make(chan int, maximumSimultaneousDownloads)
@@ -199,6 +198,7 @@ func fetchDatasetsData(tfs *TemporaryFileSource, datasets []*aonui.Dataset) chan
 			defer tmpFile.Close()
 
 			// Perform download. Attempt download repeatedly
+			maximumTries := dataset.Run.Source.FetchStrategy.MaximumRetries
 			for tries := 0; tries < maximumTries; tries++ {
 				log.Print("Fetching ", dataset.Identifier,
 					" (try ", tries+1, " of ", maximumTries, ")")
