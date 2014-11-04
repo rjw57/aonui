@@ -1,17 +1,21 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
-	aonui "github.com/rjw57/aonui"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/rjw57/aonui"
 )
 
 const maximumSimultaneousDownloads = 5
@@ -19,6 +23,55 @@ const maximumTries = 4
 
 // Global semaphore used to limit the number of simultaneous downloads
 var fetchSem = make(chan int, maximumSimultaneousDownloads)
+
+type TemporaryFileSource struct {
+	BaseDir string
+	Prefix  string
+
+	files []*os.File
+}
+
+func (tfs *TemporaryFileSource) Create() (*os.File, error) {
+	f, err := ioutil.TempFile(tfs.BaseDir, tfs.Prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	tfs.files = append(tfs.files, f)
+	return f, nil
+}
+
+func (tfs *TemporaryFileSource) Remove(f *os.File) error {
+	// Find index of f in files
+	for fIdx := 0; fIdx < len(tfs.files); fIdx++ {
+		if tfs.files[fIdx] != f {
+			continue
+		}
+
+		// We found f, remove it from our list
+		tfs.files = append(tfs.files[:fIdx], tfs.files[fIdx+1:]...)
+
+		// Remove it from disk
+		if err := os.Remove(f.Name()); err != nil {
+			return err
+		}
+	}
+
+	// If we get here, f was not in files
+	return errors.New("Temporary file was not managed by me")
+}
+
+func (tfs *TemporaryFileSource) RemoveAll() error {
+	var lastErr error
+
+	for _, f := range tfs.files {
+		if err := os.Remove(f.Name()); err != nil {
+			lastErr = err
+		}
+	}
+
+	return lastErr
+}
 
 func main() {
 	// Command-line flags
@@ -31,7 +84,7 @@ func main() {
 	flag.Parse()
 
 	// Fetch all of the runs
-	runs, err := aonui.GFSHalfDegreeDataset.FetchRuns()
+	runs, err := aonui.GFSQuarterDegreeDataset.FetchRuns()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,6 +108,21 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// File source for temporary files
+	tfs := TemporaryFileSource{BaseDir: baseDir, Prefix: "dataset-"}
+	defer tfs.RemoveAll()
+
+	// Make sure to remove temporary files on keyboard interrupt
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for s := range c {
+			log.Printf("captured %v, deleting temporary files", s)
+			tfs.RemoveAll()
+			os.Exit(1)
+		}
+	}()
+
 	// Open the output file
 	filename := filepath.Join(baseDir, run.Identifier+".grib2")
 	log.Print("Fetching run to ", filename)
@@ -69,13 +137,14 @@ func main() {
 
 	// Concatenate temporary files as they are finished
 	fetchStart := time.Now()
-	for fn := range fetchDatasetsData(baseDir, datasets) {
-		if f, err := os.Open(fn); err != nil {
+	for f := range fetchDatasetsData(&tfs, datasets) {
+		if input, err := os.Open(f.Name()); err != nil {
 			log.Print("Error copying temporary file: ", err)
 		} else {
-			io.Copy(output, f)
+			io.Copy(output, input)
+			input.Close()
 		}
-		os.Remove(fn)
+		tfs.Remove(f)
 	}
 
 	fetchDuration := time.Since(fetchStart)
@@ -88,12 +157,12 @@ func main() {
 		ByteCount(float64(fi.Size())/fetchDuration.Seconds())))
 }
 
-func fetchDatasetsData(baseDir string, datasets []*aonui.Dataset) chan string {
+func fetchDatasetsData(tfs *TemporaryFileSource, datasets []*aonui.Dataset) chan *os.File {
 	// Which records are we interested in?
 	paramsOfInterest := []string{"HGT", "UGRD", "VGRD"}
 
 	var wg sync.WaitGroup
-	tmpFilesChan := make(chan string)
+	tmpFilesChan := make(chan *os.File)
 
 	trySleepDuration, err := time.ParseDuration("10s")
 	if err != nil {
@@ -110,7 +179,7 @@ func fetchDatasetsData(baseDir string, datasets []*aonui.Dataset) chan string {
 			defer func() { <-fetchSem }()
 
 			// Create a temporary file for output
-			tmpFile, err := ioutil.TempFile(baseDir, "dataset-")
+			tmpFile, err := tfs.Create()
 			if err != nil {
 				log.Print("Error creating temporary file: ", err)
 			}
@@ -131,7 +200,7 @@ func fetchDatasetsData(baseDir string, datasets []*aonui.Dataset) chan string {
 				time.Sleep(trySleepDuration)
 			}
 
-			tmpFilesChan <- tmpFile.Name()
+			tmpFilesChan <- tmpFile
 		}(ds)
 	}
 
@@ -164,10 +233,21 @@ func fetchDataset(output io.Writer, dataset *aonui.Dataset, paramsOfInterest []s
 				saveItem = saveItem || poi == p
 			}
 		}
+
+		// HACK: we also are only interested in wind velocities at a
+		// particular pressure. (i.e. ones whose "LayerName" field is of
+		// the form "XXX mb".)
+		saveItem = saveItem && strings.HasSuffix(item.LayerName, " mb")
+
 		if saveItem {
 			fetchItems = append(fetchItems, item)
 			totalToFetch += item.Extent
 		}
+	}
+
+	if len(fetchItems) == 0 {
+		log.Print("No items to fetch")
+		return nil
 	}
 
 	log.Print(fmt.Sprintf("Fetching %d records from %v (%v)",
