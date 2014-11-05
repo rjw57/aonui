@@ -40,11 +40,12 @@ func ParseInventory(stream io.Reader, totalLength int64) (Inventory, error) {
 
 	// Process each line of the index. We postpone appending the next item
 	// from the inventory until we can calculate the extent.
-	lineScanner := bufio.NewScanner(stream)
-	for lineScanner.Scan() {
-		fields := strings.Split(lineScanner.Text(), ":")
+	scanner := bufio.NewScanner(stream)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fields := strings.Split(line, ":")
 		if len(fields) < 7 {
-			return nil, errors.New("Invalid inventory format")
+			return nil, errors.New("Inventory record has too few fields")
 		}
 
 		// The record index has one of two formats: "\d+" or
