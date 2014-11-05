@@ -105,7 +105,7 @@ func main() {
 	for _, run := range runs[:maxRuns] {
 		destFn := filepath.Join(baseDir, run.Identifier+".grib2")
 
-		if _, err := os.Stat(destFn); err != nil {
+		if _, err := os.Stat(destFn); err == nil {
 			log.Print("not overwriting ", destFn)
 			continue
 		}
