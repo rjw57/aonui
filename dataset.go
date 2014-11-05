@@ -48,7 +48,7 @@ func (ds *Dataset) FetchInventory() (Inventory, error) {
 	}
 
 	// Parse inventory
-	return parseInventory(resp.Body, datasetLength)
+	return ParseInventory(resp.Body, datasetLength)
 }
 
 // Return the URL which is *assumed* to be the inventory in wgrib "short" format

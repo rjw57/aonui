@@ -28,10 +28,12 @@ type InventoryItem struct {
 
 type Inventory []*InventoryItem
 
-func parseInventory(stream io.Reader, totalLength int64) (Inventory, error) {
+// Parse a wgrib2-style "short" inventory. Read the inventory from stream. The
+// total length of the GRIB2 message should be passed as totalLength.
+func ParseInventory(stream io.Reader, totalLength int64) (Inventory, error) {
 	var (
 		inventory Inventory
-		lastItem *InventoryItem
+		lastItem  *InventoryItem
 	)
 
 	// Process each line of the index. We postpone appending the next item
@@ -40,7 +42,7 @@ func parseInventory(stream io.Reader, totalLength int64) (Inventory, error) {
 	for lineScanner.Scan() {
 		fields := strings.Split(lineScanner.Text(), ":")
 		if len(fields) < 7 {
-			return nil, errors.New("Invalid inventory format");
+			return nil, errors.New("Invalid inventory format")
 		}
 
 		// The record index has one of two formats: "\d+" or
@@ -91,12 +93,12 @@ func parseInventory(stream io.Reader, totalLength int64) (Inventory, error) {
 		if subRecord == 1 {
 			// If this is sub-record 1, create a new item as per usual
 			item := &InventoryItem{
-				RecordNumber: record,
-				Offset: offset,
-				When: date,
-				Parameters: []string{ fields[3] },
-				LayerName: fields[4],
-				TypeName: fields[5],
+				RecordNumber:      record,
+				Offset:            offset,
+				When:              date,
+				Parameters:        []string{fields[3]},
+				LayerName:         fields[4],
+				TypeName:          fields[5],
 				FieldAverageCount: fieldAvCount,
 			}
 
