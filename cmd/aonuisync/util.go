@@ -1,8 +1,9 @@
 package main
 
 import (
-	aonui "github.com/rjw57/aonui"
 	"fmt"
+
+	"github.com/rjw57/aonui"
 )
 
 type ByteCount int64
