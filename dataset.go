@@ -2,12 +2,14 @@
 
 package aonui
 
-import "errors"
-import "fmt"
-import "io"
-import "net/http"
-import "net/url"
-import "strings"
+import (
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
+)
 
 // A description of an individual GRIB dataset from a run
 type Dataset struct {

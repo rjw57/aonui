@@ -2,15 +2,17 @@
 
 package aonui
 
-import "bufio"
-import "errors"
-import "fmt"
-import "io"
-import "log"
-import "regexp"
-import "strconv"
-import "strings"
-import "time"
+import (
+	"bufio"
+	"errors"
+	"fmt"
+	"io"
+	"log"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+)
 
 // An item from a wgrib "short" inventory. We extend the inventory item with a
 // computed extent giving the size of the record in bytes.
