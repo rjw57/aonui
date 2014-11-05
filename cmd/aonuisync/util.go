@@ -1,4 +1,4 @@
-package aonuicmd
+package main
 
 import (
 	"fmt"
