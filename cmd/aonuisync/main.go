@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/rjw57/aonui"
+	"github.com/rjw57/aonui/cmd/common"
 )
 
 const maximumSimultaneousDownloads = 5
@@ -97,7 +98,7 @@ func main() {
 	}
 
 	// Sort by *descending* date
-	sort.Sort(sort.Reverse(ByDate(runs)))
+	sort.Sort(sort.Reverse(aonuicmd.ByDate(runs)))
 
 	// Check that we have found enough runs
 	if len(runs) < 2 {
@@ -161,7 +162,7 @@ func main() {
 		return
 	}
 	log.Print(fmt.Sprintf("Overall download speed: %v/sec",
-		ByteCount(float64(fi.Size())/fetchDuration.Seconds())))
+		aonuicmd.ByteCount(float64(fi.Size())/fetchDuration.Seconds())))
 }
 
 func fetchDatasetsData(tfs *TemporaryFileSource, datasets []*aonui.Dataset) chan *os.File {
@@ -274,7 +275,7 @@ func fetchDataset(output io.Writer, dataset *aonui.Dataset, paramsOfInterest []s
 	}
 
 	log.Print(fmt.Sprintf("Fetching %d records from %v (%v)",
-		len(fetchItems), dataset.Identifier, ByteCount(totalToFetch)))
+		len(fetchItems), dataset.Identifier, aonuicmd.ByteCount(totalToFetch)))
 	if _, err := dataset.FetchAndWriteRecords(output, fetchItems); err != nil {
 		return err
 	}
