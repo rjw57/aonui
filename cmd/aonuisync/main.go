@@ -72,16 +72,18 @@ func (tfs *TemporaryFileSource) RemoveAll() error {
 	return lastErr
 }
 
-func main() {
-	// Command-line flags
-	var (
-		baseDir string
-		highRes bool
-	)
+// Command-line flags
+var (
+	baseDir string
+	highRes bool
+	maxRuns int
+)
 
+func main() {
 	// Parse command line
 	flag.StringVar(&baseDir, "basedir", ".", "directory to download data to")
 	flag.BoolVar(&highRes, "highres", false, "download 0.25deg data as opposed to 0.5deg")
+	flag.IntVar(&maxRuns, "maxruns", 3, "maximum number of runs to examine before giving up")
 	flag.Parse()
 
 	// Which source to use?
@@ -99,20 +101,44 @@ func main() {
 	// Sort by *descending* date
 	sort.Sort(sort.Reverse(ByDate(runs)))
 
-	// Check that we have found enough runs
-	if len(runs) < 2 {
-		log.Print("Not enough runs found.")
-		return
+	succeeded := false
+	for _, run := range runs[:maxRuns] {
+		destFn := filepath.Join(baseDir, run.Identifier+".grib2")
+
+		if err := syncRun(run, destFn); err != nil {
+			log.Print("error syncing run: ", err)
+
+			// ensure we remove destFn if we created it
+			if os.IsExist(err) {
+				log.Print("Removing ", destFn)
+				os.Remove(destFn)
+			}
+		} else {
+			// success!
+			log.Print("run downloaded successfully")
+			succeeded = true
+			break
+		}
 	}
 
-	// Choose the penultimate run
-	run := runs[1]
+	if !succeeded {
+		log.Fatal("no runs were downloaded")
+	}
+}
+
+func syncRun(run *aonui.Run, destFn string) error {
 	log.Print("Fetching data for run at ", run.When)
 
 	// Get datasets for this run
 	datasets, err := run.FetchDatasets()
 	if err != nil {
-		log.Fatal(err)
+		return err
+	}
+	log.Print("Run has ", len(datasets), " dataset(s)")
+
+	if len(datasets) < run.Source.MinDatasets {
+		log.Print("Run has too few, expecting at least ", run.Source.MinDatasets)
+		return errors.New("Too few datasets in source")
 	}
 
 	// File source for temporary files
@@ -131,12 +157,11 @@ func main() {
 	}()
 
 	// Open the output file
-	filename := filepath.Join(baseDir, run.Identifier+".grib2")
-	log.Print("Fetching run to ", filename)
-	output, err := os.Create(filename)
+	log.Print("Fetching run to ", destFn)
+	output, err := os.Create(destFn)
 	if err != nil {
 		log.Print("Error creating output: ", err)
-		return
+		return err
 	}
 
 	// Ensure the file is closed on function exit
@@ -158,10 +183,12 @@ func main() {
 	fi, err := output.Stat()
 	if err != nil {
 		log.Print("Error: ", err)
-		return
+		return err
 	}
 	log.Print(fmt.Sprintf("Overall download speed: %v/sec",
 		ByteCount(float64(fi.Size())/fetchDuration.Seconds())))
+
+	return nil
 }
 
 func fetchDatasetsData(tfs *TemporaryFileSource, datasets []*aonui.Dataset) chan *os.File {

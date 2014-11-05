@@ -12,20 +12,12 @@ import (
 
 // Information on where to get runs and datasets from
 type DataSource struct {
-	// Root URL for dataset
-	Root string
-
-	// Pattern to match directories containing individual runs in Root
-	RunPattern string
-
-	// Pattern to match individual datasets within a run
-	DatasetPattern string
-
-	// Strategy to use when fetching data
-	FetchStrategy FetchStrategy
-
-	// Maximum forecast hour to fetch (or 0 to fetch all)
-	MaxForecastHour int
+	Root            string        // Root URL for dataset
+	RunPattern      string        // Pattern to match directories containing individual runs
+	DatasetPattern  string        // Pattern to match individual datasets within a run
+	FetchStrategy   FetchStrategy // Strategy to use when fetching data
+	MaxForecastHour int           // Maximum forecast hour to fetch (or 0 to fetch all)
+	MinDatasets     int           // Minimum number of datasets to be "good" (or 0 for no limit)
 }
 
 // Fetch available runs in a dataset. Note that partial runs (i.e. those with

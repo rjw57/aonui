@@ -18,7 +18,7 @@ var Wgrib2Command = "wgrib2"
 // ordering. This function takes the source and destination filenames.
 func Wgrib2Extract(sourceFn string, destFn string) error {
 	// Build wgrib2 command
-	cmd := exec.Command(Wgrib2Command, "-bin", destFn, sourceFn)
+	cmd := exec.Command(Wgrib2Command, "-no_header", "-bin", destFn, sourceFn)
 
 	// Get error pipe
 	wg2Stderr, err := cmd.StderrPipe()
