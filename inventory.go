@@ -30,6 +30,32 @@ type InventoryItem struct {
 
 type Inventory []*InventoryItem
 
+// Format an inventory item as a slice of wgrib2-format index records. Specify
+// which record within the file this item is via the 0-based idx argument.
+func (item *InventoryItem) Wgrib2Strings() []string {
+	lines := []string{}
+	for pIdx, param := range item.Parameters {
+		subParam := ""
+		if len(item.Parameters) > 1 {
+			subParam = fmt.Sprintf(".%d", pIdx+1)
+		}
+
+		fac := ""
+		if item.FieldAverageCount != 0 {
+			fac = fmt.Sprint(item.FieldAverageCount)
+		}
+
+		when := item.When.Format("2006010215")
+
+		line := fmt.Sprintf("%v%v:%d:d=%v:%v:%v:%v:%v",
+			item.RecordNumber, subParam, item.Offset, when, param,
+			item.LayerName, item.TypeName, fac,
+		)
+		lines = append(lines, line)
+	}
+	return lines
+}
+
 // Parse a wgrib2-style "short" inventory. Read the inventory from stream. The
 // total length of the GRIB2 message should be passed as totalLength.
 func ParseInventory(stream io.Reader, totalLength int64) (Inventory, error) {
@@ -42,6 +68,10 @@ func ParseInventory(stream io.Reader, totalLength int64) (Inventory, error) {
 	// from the inventory until we can calculate the extent.
 	scanner := bufio.NewScanner(stream)
 	for scanner.Scan() {
+		if err := scanner.Err(); err != nil {
+			return nil, err
+		}
+
 		line := scanner.Text()
 		fields := strings.Split(line, ":")
 		if len(fields) < 7 {
