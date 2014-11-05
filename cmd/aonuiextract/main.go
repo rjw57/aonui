@@ -25,15 +25,21 @@ func main() {
 	// Get arguments
 	sourceFn := flag.Args()[0]
 	destFn := flag.Args()[1]
-
 	if tmpDir == "" {
 		tmpDir = filepath.Dir(destFn)
 	}
 
+	// Do work
+	if err := extract(sourceFn, destFn, tmpDir); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func extract(sourceFn, destFn, tmpDir string) error {
 	// Create a temporary file
 	tmpFile, err := ioutil.TempFile(tmpDir, filepath.Base(destFn)+".reordered.grib2.")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	tmpFile.Close()
 	tmpFn := tmpFile.Name()
@@ -52,11 +58,13 @@ func main() {
 
 	log.Print("Re-ordering input GRIB to ", tmpFn)
 	if err := aonui.ReorderGrib2(sourceFn, tmpFn); err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	log.Print("Expanding to ", destFn)
 	if err := aonui.Wgrib2Extract(tmpFn, destFn); err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }
