@@ -105,6 +105,11 @@ func main() {
 	for _, run := range runs[:maxRuns] {
 		destFn := filepath.Join(baseDir, run.Identifier+".grib2")
 
+		if _, err := os.Stat(destFn); err != nil {
+			log.Print("not overwriting ", destFn)
+			continue
+		}
+
 		if err := syncRun(run, destFn); err != nil {
 			log.Print("error syncing run: ", err)
 
