@@ -36,7 +36,7 @@ func (ds *Dataset) FetchInventory() (Inventory, error) {
 	// Record and verify the content length
 	datasetLength := resp.ContentLength
 	if datasetLength < 0 {
-		return nil, errors.New("Server did not give Content-Length for dataset")
+		return nil, errors.New("server did not give Content-Length for dataset")
 	}
 
 	// Fetch the inventory
@@ -91,7 +91,7 @@ func (ds *Dataset) FetchAndWriteRecords(output io.Writer, records []*InventoryIt
 
 	// Check we get partial content
 	if resp.StatusCode != http.StatusPartialContent {
-		return 0, fmt.Errorf("Expected HTTP partial content, got %v", resp.StatusCode)
+		return 0, fmt.Errorf("expected HTTP partial content, got %v", resp.StatusCode)
 	}
 
 	// Everything looks good, start copying

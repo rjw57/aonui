@@ -14,9 +14,9 @@ import (
 	"time"
 )
 
-// An item from a wgrib "short" inventory. We extend the inventory item with a
-// computed extent giving the size of the record in bytes.
-// See: ftp://ftp.cpc.ncep.noaa.gov/wd51we/wgrib/readme
+// InventoryItem represents an item from a wgrib "short" inventory. We extend
+// the inventory item with a computed extent giving the size of the record in
+// bytes. See: ftp://ftp.cpc.ncep.noaa.gov/wd51we/wgrib/readme
 type InventoryItem struct {
 	RecordNumber      int
 	Offset            int64
@@ -28,10 +28,12 @@ type InventoryItem struct {
 	FieldAverageCount int
 }
 
+// An Inventory is composed of zero or more InventoryItems.
 type Inventory []*InventoryItem
 
-// Format an inventory item as a slice of wgrib2-format index records. Specify
-// which record within the file this item is via the 0-based idx argument.
+// Wgrib2Strings will format an inventory item as a slice of wgrib2-format
+// index records. Specify which record within the file this item is via the
+// 0-based idx argument.
 func (item *InventoryItem) Wgrib2Strings() []string {
 	lines := []string{}
 	for pIdx, param := range item.Parameters {
@@ -56,8 +58,9 @@ func (item *InventoryItem) Wgrib2Strings() []string {
 	return lines
 }
 
-// Parse a wgrib2-style "short" inventory. Read the inventory from stream. The
-// total length of the GRIB2 message should be passed as totalLength.
+// ParseInventory parses a wgrib2-style "short" inventory. The inventory is
+// read from stream. The total length of the GRIB2 message should be passed as
+// totalLength.
 func ParseInventory(stream io.Reader, totalLength int64) (Inventory, error) {
 	var (
 		inventory Inventory
@@ -75,7 +78,7 @@ func ParseInventory(stream io.Reader, totalLength int64) (Inventory, error) {
 		line := scanner.Text()
 		fields := strings.Split(line, ":")
 		if len(fields) < 7 {
-			return nil, errors.New("Inventory record has too few fields")
+			return nil, errors.New("inventory record has too few fields")
 		}
 
 		// The record index has one of two formats: "\d+" or
@@ -85,7 +88,7 @@ func ParseInventory(stream io.Reader, totalLength int64) (Inventory, error) {
 		subRecord := 1 // default
 		recordIds := strings.Split(fields[0], ".")
 		if len(recordIds) < 0 || len(recordIds) > 2 {
-			return nil, fmt.Errorf("Invalid record number: %v", fields[0])
+			return nil, fmt.Errorf("invalid record number: %v", fields[0])
 		}
 
 		// Record number
@@ -144,7 +147,7 @@ func ParseInventory(stream io.Reader, totalLength int64) (Inventory, error) {
 		} else {
 			// If this is a later record, update the last item
 			if lastItem == nil {
-				return nil, errors.New("Unexpected sub-record number >1")
+				return nil, errors.New("unexpected sub-record number >1")
 			}
 
 			lastItem.Parameters = append(lastItem.Parameters, fields[3])
@@ -171,7 +174,7 @@ func parseDateField(s string) (time.Time, error) {
 
 	submatches := re.FindStringSubmatch(s)
 	if submatches == nil {
-		return time.Now(), errors.New("Invalid date field format")
+		return time.Now(), errors.New("invalid date field format")
 	}
 
 	year, _ := strconv.Atoi(submatches[1])

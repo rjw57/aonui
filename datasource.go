@@ -10,7 +10,7 @@ import (
 	"code.google.com/p/go.net/html"
 )
 
-// Information on where to get runs and datasets from
+// A DataSource contains information on where to get runs and datasets from
 type DataSource struct {
 	Root            string        // Root URL for dataset
 	RunPattern      string        // Pattern to match directories containing individual runs
@@ -20,9 +20,10 @@ type DataSource struct {
 	MinDatasets     int           // Minimum number of datasets to be "good" (or 0 for no limit)
 }
 
-// Fetch available runs in a dataset. Note that partial runs (i.e. those with
-// only some of the datasets uploaded) will also be returned and so one should
-// be careful to check the number of datasets matches what you expect.
+// FetchRuns will fetch available runs in a dataset. Note that partial runs
+// (i.e. those with only some of the datasets uploaded) will also be returned
+// and so one should be careful to check the number of datasets matches what
+// you expect.
 func (ds *DataSource) FetchRuns() ([]*Run, error) {
 	// Form base URL
 	baseURL, err := url.Parse(ds.Root)

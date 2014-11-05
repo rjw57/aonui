@@ -12,7 +12,8 @@ import (
 	"code.google.com/p/go.net/html"
 )
 
-// Strategy for fetching data
+// FetchStrategy represents a strategy for fetching data from servers which may
+// be unreliable.
 type FetchStrategy struct {
 	// Maximum retry count when fetching URLs
 	MaximumRetries int
@@ -21,6 +22,8 @@ type FetchStrategy struct {
 	TrySleepSeconds int
 }
 
+// TrySleepDuration will return a time.Duration which represents the number of
+// seconds in the TrySleepSeconds field.
 func (s *FetchStrategy) TrySleepDuration() time.Duration {
 	d, err := time.ParseDuration(fmt.Sprint(s.TrySleepSeconds, "s"))
 	if err != nil {
@@ -31,7 +34,7 @@ func (s *FetchStrategy) TrySleepDuration() time.Duration {
 
 // Fetch data via HTTP with retries and sleep times. Returns http.Response and
 // error as per http.Get().
-func getUrlWithStrategy(url string, strategy FetchStrategy) (*http.Response, error) {
+func getURLWithStrategy(url string, strategy FetchStrategy) (*http.Response, error) {
 	sleepDuration := strategy.TrySleepDuration()
 	nTries := strategy.MaximumRetries
 	if nTries < 1 {
@@ -39,7 +42,7 @@ func getUrlWithStrategy(url string, strategy FetchStrategy) (*http.Response, err
 	}
 
 	// Keep trying
-	for try := 0; try < nTries; try += 1 {
+	for try := 0; try < nTries; try++ {
 		resp, err := http.Get(url)
 		if err == nil && resp.StatusCode == http.StatusOK {
 			// Everything was fine
@@ -56,7 +59,7 @@ func getUrlWithStrategy(url string, strategy FetchStrategy) (*http.Response, err
 	}
 
 	// If we get here, give up.
-	return nil, errors.New("Maximum number of retries exceeded")
+	return nil, errors.New("maximum number of retries exceeded")
 }
 
 // Fetch data from a URL interpreting the result as HTML and return the root of
@@ -64,7 +67,7 @@ func getUrlWithStrategy(url string, strategy FetchStrategy) (*http.Response, err
 func getAndParse(url string, strategy FetchStrategy) (*html.Node, error) {
 	// Attempt to fetch URL
 	log.Print("Fetching ", url)
-	resp, err := getUrlWithStrategy(url, strategy)
+	resp, err := getURLWithStrategy(url, strategy)
 	if err != nil {
 		return nil, err
 	}

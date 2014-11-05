@@ -13,7 +13,7 @@ import (
 	"code.google.com/p/go.net/html"
 )
 
-// A description of an individual run of the GFS.
+// A Run is a description of an individual run of the GFS.
 type Run struct {
 	Source     *DataSource
 	Identifier string
@@ -21,7 +21,7 @@ type Run struct {
 	When       time.Time
 }
 
-// Fetch individual datasets from a run.
+// FetchDatasets fetches a list of individual datasets from a run.
 func (run *Run) FetchDatasets() ([]*Dataset, error) {
 	// Compile regexp for matching dataset name
 	datasetRegexp, err := regexp.Compile(run.Source.DatasetPattern)
