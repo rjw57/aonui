@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// A description of an individual GRIB dataset from a run
+// A Dataset is a description of an individual GRIB dataset from a run
 type Dataset struct {
 	Run            *Run
 	Identifier     string
@@ -20,7 +20,7 @@ type Dataset struct {
 	ForecastHour   int
 }
 
-// Fetch the inventory associated with a dataset.
+// FetchInventory will fetch and parse the GRIB inventory associated with a Dataset. The inventory URL is constructed from the Dataset URL and is not guaranteed to exist.
 func (ds *Dataset) FetchInventory() (Inventory, error) {
 	// Fetch headers for the actual dataset. This is required to get the
 	// complete length.
@@ -53,13 +53,16 @@ func (ds *Dataset) FetchInventory() (Inventory, error) {
 	return ParseInventory(resp.Body, datasetLength)
 }
 
-// Return the URL which is *assumed* to be the inventory in wgrib "short" format
+// InventoryURL will return the URL which is *assumed* to point to the
+// inventory in wgrib2 "short" format
 func (ds *Dataset) InventoryURL() *url.URL {
 	inURL := *ds.URL // NB: Copy of ds.URL
 	inURL.Path = inURL.Path + ".idx"
 	return &inURL
 }
 
+// FetchAndWriteRecords fetches a set of records from an individual dataset and
+// writes them sequentially to an io.Writer.
 func (ds *Dataset) FetchAndWriteRecords(output io.Writer, records []*InventoryItem) (int64, error) {
 	// Create a new HTTP client since we'll be adding custom headers
 	client := new(http.Client)
