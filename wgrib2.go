@@ -12,10 +12,10 @@ import (
 // looked up in the system path.
 var Wgrib2Command = "wgrib2"
 
-// Use Wgrib2 to extract a GRIB2 into a direct binary formatted file. No
-// headers or other information are added to the file which consists of packed
-// native float types in West-to-East, South-to-North, record-by-record
-// ordering. This function takes the source and destination filenames.
+// Wgrib2Extract uses Wgrib2 to extract a GRIB2 into a direct binary formatted
+// file. No headers or other information are added to the file which consists
+// of packed native float types in West-to-East, South-to-North,
+// record-by-record ordering. Input and output are specified as filenames.
 func Wgrib2Extract(sourceFn string, destFn string) error {
 	// Build wgrib2 command
 	cmd := exec.Command(Wgrib2Command, "-no_header", "-bin", destFn, sourceFn)
@@ -43,16 +43,16 @@ func Wgrib2Extract(sourceFn string, destFn string) error {
 	return nil
 }
 
-// Use wgrib2 to parse the inventory of the GRIB2 file specified by its
-// filename.
+// Wgrib2Inventory uses wgrib2 to parse the inventory of the GRIB2 file
+// specified by its filename.
 func Wgrib2Inventory(fn string) (Inventory, error) {
 	// Get total length of GRIB2 file
-	totalLength := int64(0)
-	if fi, err := os.Stat(fn); err != nil {
+	var fi os.FileInfo
+	fi, err := os.Stat(fn)
+	if err != nil {
 		return nil, err
-	} else {
-		totalLength = fi.Size()
 	}
+	totalLength := fi.Size()
 
 	// Build wgrib2 command
 	cmd := exec.Command(Wgrib2Command, "-s", fn)

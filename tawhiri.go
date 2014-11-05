@@ -13,16 +13,19 @@ import (
 	"strings"
 )
 
+// TawhiriItem is a wrapper for an InventoryItem where the tawhiri-specific
+// fields have been parsed. If parsing fails, the IsValid field is set to
+// false.
 type TawhiriItem struct {
 	Item         *InventoryItem
 	ForecastHour int
 	Pressure     int
-	ParamIdx     int // HGT = 0, UGRD = 1, VGRD = 2, Other = 3
-
-	// Only true if ForecastHour and Pressure were parsed without error
-	IsValid bool
+	ParamIdx     int  // HGT = 0, UGRD = 1, VGRD = 2, Other = 3
+	IsValid      bool // Only true if ForecastHour and Pressure were parsed without error
 }
 
+// ToTawhiri parses tawhiri-specific fields from an InventoryItem and wrap it
+// in an TawhiriItem.
 func ToTawhiri(item *InventoryItem) *TawhiriItem {
 	const (
 		fcstSuffix     = " hour fcst"
@@ -76,8 +79,10 @@ func ToTawhiri(item *InventoryItem) *TawhiriItem {
 	return transItem
 }
 
+// FromTawhiri unwraps the contained InventoryItem from a TawhiriItem.
 func FromTawhiri(item *TawhiriItem) *InventoryItem { return item.Item }
 
+// ToTawhiris wraps items in an Inventory as TawhiriItems.
 func ToTawhiris(items Inventory) []*TawhiriItem {
 	out := []*TawhiriItem{}
 	for _, i := range items {
@@ -86,6 +91,7 @@ func ToTawhiris(items Inventory) []*TawhiriItem {
 	return out
 }
 
+// FromTawhiris unwraps InventoryItems from a slice of TawhiriItems.
 func FromTawhiris(items []*TawhiriItem) Inventory {
 	out := Inventory{}
 	for _, i := range items {
@@ -94,6 +100,7 @@ func FromTawhiris(items []*TawhiriItem) Inventory {
 	return out
 }
 
+// ByTawhiri is a type used to sort slices of TawhiriItems in "tawhiri"-order.
 type ByTawhiri []*TawhiriItem
 
 func (a ByTawhiri) Len() int      { return len(a) }
@@ -142,8 +149,8 @@ func (a ByTawhiri) Less(i, j int) bool {
 	return false
 }
 
-// Re-order an on-disk GRIB2 file into Tawhiri order filtering unused records
-// in the process.
+// ReorderGrib2 re-orders an on-disk GRIB2 file into Tawhiri order filtering
+// unused records in the process.
 func ReorderGrib2(sourceFn string, destFn string) error {
 	// Load and parse inventory
 	inv, err := Wgrib2Inventory(sourceFn)
