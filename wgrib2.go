@@ -12,6 +12,37 @@ import (
 // looked up in the system path.
 var Wgrib2Command = "wgrib2"
 
+// Use Wgrib2 to extract a GRIB2 into a direct binary formatted file. No
+// headers or other information are added to the file which consists of packed
+// native float types in West-to-East, South-to-North, record-by-record
+// ordering. This function takes the source and destination filenames.
+func Wgrib2Extract(sourceFn string, destFn string) error {
+	// Build wgrib2 command
+	cmd := exec.Command(Wgrib2Command, "-bin", destFn, sourceFn)
+
+	// Get error pipe
+	wg2Stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+
+	// Start command
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	// Copy standard error from wgrib2
+	go func() { io.Copy(os.Stderr, wg2Stderr) }()
+
+	// Wait for command completion
+	if err := cmd.Wait(); err != nil {
+		return err
+	}
+
+	// Return success
+	return nil
+}
+
 // Use wgrib2 to parse the inventory of the GRIB2 file specified by its
 // filename.
 func Wgrib2Inventory(fn string) (Inventory, error) {

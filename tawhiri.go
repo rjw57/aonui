@@ -1,12 +1,17 @@
 package aonui
 
+// Support for ordering and filtering inventories to contain records that
+// tawhiri expects.
+
 import (
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
-
-// Support for ordering and filtering inventories to contain records that
-// tawhiri expects.
 
 type TawhiriItem struct {
 	Item         *InventoryItem
@@ -135,4 +140,62 @@ func (a ByTawhiri) Less(i, j int) bool {
 
 	// Otherwise, treat as equal
 	return false
+}
+
+// Re-order an on-disk GRIB2 file into Tawhiri order filtering unused records
+// in the process.
+func ReorderGrib2(sourceFn string, destFn string) error {
+	// Load and parse inventory
+	inv, err := Wgrib2Inventory(sourceFn)
+	if err != nil {
+		return errors.New(fmt.Sprint("error loading grib: ", err))
+	}
+
+	// Parse items
+	tws := ToTawhiris(inv)
+
+	// Filter invalid records
+	filteredTws := []*TawhiriItem{}
+	for _, tw := range tws {
+		if tw.IsValid {
+			filteredTws = append(filteredTws, tw)
+		}
+	}
+	tws = filteredTws
+
+	// Sort. Note that sorting in this manner is effectively a Swartzian
+	// transform.
+	sort.Sort(ByTawhiri(tws))
+
+	// De-parse
+	inv = FromTawhiris(tws)
+
+	// Open input
+	in, err := os.Open(sourceFn)
+	if err != nil {
+		return errors.New(fmt.Sprint("error opening input: ", err))
+	}
+	defer in.Close()
+
+	// Open output
+	out, err := os.Create(destFn)
+	if err != nil {
+		return errors.New(fmt.Sprint("error opening output: ", err))
+	}
+	defer out.Close()
+
+	// Perform copy
+	for _, invItem := range inv {
+		// Seek in input
+		in.Seek(invItem.Offset, 0)
+
+		// Copy to output
+		_, err := io.CopyN(out, in, invItem.Extent)
+		if err != nil {
+			return errors.New(fmt.Sprint("error re-ordering: ", err))
+		}
+	}
+
+	// success!
+	return nil
 }
