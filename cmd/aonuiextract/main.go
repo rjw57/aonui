@@ -29,6 +29,11 @@ func main() {
 		tmpDir = filepath.Dir(destFn)
 	}
 
+	// Do not overwrite existing files
+	if _, err := os.Stat(destFn); err == nil {
+		log.Fatal("not overwriting existing file ", destFn)
+	}
+
 	// Do work
 	if err := extract(sourceFn, destFn, tmpDir); err != nil {
 		log.Fatal(err)
