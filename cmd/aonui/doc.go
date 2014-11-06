@@ -12,10 +12,10 @@ Usage:
 The commands are:
 
     sync        fetch wind data from the GFS
+    extract     extract binary data from a GRIB2 message into Tawhiri order
     info        print information on GRIB2 files
     inv         filter and sort GRIB2 inventories into Tawhiri order
     reorder     re-order a GRIB2 file into Tawhiri order
-    extract     extract binary data from a GRIB2 message into Tawhiri order
 
 Use "aonui help [command]" for more information about a command.
 
@@ -54,6 +54,18 @@ b) already downloaded proceed to the next until the list of runs is exhausted.
 
 The utility attempts to be robust in the face of flaky network connections or a
 flaky server by re-trying failed downloads.
+
+
+Extract binary data from a GRIB2 message into Tawhiri order
+
+Usage:
+
+        aonui extract <ingrib> <outbin>
+
+Extract will parse a GRIB2 message in the file ingrib and write a raw binary
+dump of native-endian floating point values to outbin in Tawhiri order.
+
+See also: aonui help tawhiri
 
 
 Print information on GRIB2 files
@@ -126,18 +138,6 @@ tawhiri" for details on this ordering.)
 
 Input is read from ingribfile and written to outgribfile. Records not used by
 Tawhiri will not be written to the output.
-
-See also: aonui help tawhiri
-
-
-Extract binary data from a GRIB2 message into Tawhiri order
-
-Usage:
-
-        aonui extract <ingrib> <outbin>
-
-Extract will parse a GRIB2 message in the file ingrib and write a raw binary
-dump of native-endian floating point values to outbin in Tawhiri order.
 
 See also: aonui help tawhiri
 
