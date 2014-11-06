@@ -101,8 +101,8 @@ inventory from the specified GRIB2 file and output an inventory on standard
 output which corresponds to the Tawhiri ordering for parameters, pressures and
 forecast hours.
 
-Inv will sort inventory items as described above but this behaviour may be
-disabled via the -nosort flag.
+Inv will sort inventory items as described in "aonui help tawhiri" but this
+behaviour may be disabled via the -nosort flag.
 
 Inv will remove inventory items not used by Tawhiri. This behaviour can be
 disabled via the -nofilter flag. In this case non-Tawhiri inventory
