@@ -32,7 +32,7 @@ var cmdSync = &Command{
 	Short:     "fetch wind data from the GFS",
 	Long: `
 Sync will fetch wind data from the Global Forecast System (GFS) servers in
-GRIB2 data. It will only fetch the subset fo the data needed. It knows how to
+GRIB2 data. It will only fetch the subset of the data needed. It knows how to
 fetch both the current 0.5 degree resolution data and the forthcoming 0.25
 degree data.
 
