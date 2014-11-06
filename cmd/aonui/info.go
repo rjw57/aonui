@@ -60,9 +60,10 @@ func runInfo(cmd *Command, args []string) {
 		return
 	}
 
-	// Form a map of forecast hours and pressures.
+	// Form a map of parameters, forecast hours and pressures.
 	fcstHourMap := make(map[int]bool)
 	pressureMap := make(map[int]bool)
+	paramMap := make(map[string]bool)
 
 	// For each tawhiri item in the inventory...
 	for _, twItem := range aonui.ToTawhiris(inv) {
@@ -74,15 +75,26 @@ func runInfo(cmd *Command, args []string) {
 		// set pressure and forecast hour flag
 		fcstHourMap[twItem.ForecastHour] = true
 		pressureMap[twItem.Pressure] = true
+
+		// set parameter flag for each parameter
+		for _, p := range twItem.Item.Parameters {
+			paramMap[p] = true
+		}
 	}
 
-	// Form a list of forecast hours and pressures
-	var fcstHours, pressures []int
+	// Form a list of parameters, forecast hours and pressures
+	var (
+		fcstHours, pressures []int
+		parameters           []string
+	)
 	for k := range fcstHourMap {
 		fcstHours = append(fcstHours, k)
 	}
 	for k := range pressureMap {
 		pressures = append(pressures, k)
+	}
+	for k := range paramMap {
+		parameters = append(parameters, k)
 	}
 
 	// Sort forecast hours and pressures
@@ -105,7 +117,7 @@ func runInfo(cmd *Command, args []string) {
 
 	fmt.Printf("NX=%d\n", shapes[0].Columns)
 	fmt.Printf("NY=%d\n", shapes[0].Rows)
-	fmt.Printf("NPARAM=3\n")
+	fmt.Printf("NPARAM=%d\n", len(parameters))
 	fmt.Printf("NPRESSURE=%d\n", len(pressures))
 	fmt.Printf("NFCSTHOUR=%d\n", len(fcstHours))
 
