@@ -9,6 +9,8 @@ import (
 	"github.com/rjw57/aonui"
 )
 
+// A ByteCount is a number of bytes. It is a wrapper around int64 allow
+// human-friendly formatting.
 type ByteCount int64
 
 func (bytes ByteCount) String() string {
@@ -24,7 +26,7 @@ func (bytes ByteCount) String() string {
 	}
 }
 
-// Sorting runs by date
+// ByDate is used to sort runs by date
 type ByDate []*aonui.Run
 
 func (d ByDate) Len() int {
@@ -39,6 +41,8 @@ func (d ByDate) Less(i, j int) bool {
 	return d[i].When.Before(d[j].When)
 }
 
+// A TemporaryFileSource is used to create temporary files, remember such
+// creation and then to tidy up afterwards.
 type TemporaryFileSource struct {
 	BaseDir string
 	Prefix  string
@@ -46,6 +50,7 @@ type TemporaryFileSource struct {
 	files []*os.File
 }
 
+// Create will create a new temporary file and return an os.File for it.
 func (tfs *TemporaryFileSource) Create() (*os.File, error) {
 	f, err := ioutil.TempFile(tfs.BaseDir, tfs.Prefix)
 	if err != nil {
@@ -56,6 +61,8 @@ func (tfs *TemporaryFileSource) Create() (*os.File, error) {
 	return f, nil
 }
 
+// Remove will remove a file previously created via Create(). It is an error to
+// pass an *os.File which was not created in this way.
 func (tfs *TemporaryFileSource) Remove(f *os.File) error {
 	// Find index of f in files
 	for fIdx := 0; fIdx < len(tfs.files); fIdx++ {
@@ -73,9 +80,11 @@ func (tfs *TemporaryFileSource) Remove(f *os.File) error {
 	}
 
 	// If we get here, f was not in files
-	return errors.New("Temporary file was not managed by me")
+	return errors.New("temporary file was not managed by me")
 }
 
+// RemoveAll will remove all files which have been created by this
+// TemporaryFileSource. It is intended that this function be called at exit.
 func (tfs *TemporaryFileSource) RemoveAll() error {
 	var lastErr error
 

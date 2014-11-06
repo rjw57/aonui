@@ -126,7 +126,7 @@ func syncRun(run *aonui.Run, destFn string) error {
 
 	if len(datasets) < run.Source.MinDatasets {
 		log.Print("Run has too few, expecting at least ", run.Source.MinDatasets)
-		return errors.New("Too few datasets in source")
+		return errors.New("too few datasets in source")
 	}
 
 	// File source for temporary files
@@ -253,7 +253,7 @@ func fetchDataset(output io.Writer, dataset *aonui.Dataset, paramsOfInterest []s
 
 	// Calculate which items to save
 	var (
-		totalToFetch int64 = 0
+		totalToFetch int64
 		fetchItems   []*aonui.InventoryItem
 	)
 	for _, item := range inventory {

@@ -56,6 +56,7 @@ func (c *Command) Name() string {
 	return name
 }
 
+// Usage prints usage information for the command to stderr.
 func (c *Command) Usage() {
 	fmt.Fprintf(os.Stderr, "usage: %s\n\n", c.UsageLine)
 	fmt.Fprintf(os.Stderr, "%s\n", strings.TrimSpace(c.Long))
