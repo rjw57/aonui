@@ -14,6 +14,7 @@ import (
 var commands = []*Command{
 	cmdInv,
 	cmdReorder,
+	cmdExtract,
 
 	helpTawhiri,
 }
