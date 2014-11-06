@@ -29,6 +29,10 @@ NX, NY, NPARAM, NPRESSURE and NFCSTHOUR give the sizes of each dimension of the
 data. PRESSURES and FCSTHOURS are comma-separated integers giving the
 particular pressures and forecast hours which correspondt to each point along
 the respective axes.
+
+Note that this command may take some time to complete the first time it is run
+on a file since collating the pressures and forecast hours requires scanning
+through the entire GRIB2 message.
 `,
 }
 
