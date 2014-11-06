@@ -12,7 +12,7 @@ import (
 var cmdReorder = &Command{
 	Run:       runReorder,
 	UsageLine: "reorder ingribfile outgribfile",
-	Short:     "re-order a GRIB2 file into \"Tawhiri order\"",
+	Short:     "re-order a GRIB2 file into Tawhiri order",
 	Long: `
 Reorder will take an existing GRIB2 file on disk and write out a new GRIB2 file
 with the records re-ordered into the order Tawhiri expects. (See "aonui help

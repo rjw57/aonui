@@ -12,7 +12,7 @@ import (
 
 var cmdExtract = &Command{
 	UsageLine: "extract [-tmpdir directory] <ingrib> <outbin>",
-	Short:     "extract binary data in \"Tawhiri order\" from a GRIB2 message",
+	Short:     "extract binary data from a GRIB2 message into Tawhiri order",
 	Long: `
 Extract will parse a GRIB2 message in the file ingrib and write a raw binary
 dump of native-order floating point values to outbin.

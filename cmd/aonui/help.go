@@ -2,7 +2,7 @@ package main
 
 var helpTawhiri = &Command{
 	UsageLine: "tawhiri",
-	Short:     "\"Tawhiri order\" for data",
+	Short:     "the Tawhiri data ordering",
 	Long: `
 The Tawhiri predictor treats the wind data as a large five-dimensional array of
 floating point values in a particular order.

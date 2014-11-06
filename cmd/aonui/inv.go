@@ -12,7 +12,7 @@ import (
 
 var cmdInv = &Command{
 	UsageLine: "inv [-nosort] [-nofilter] gribfile",
-	Short:     "filter and sort a GRIB2's inventory into \"Tawhiri order\"",
+	Short:     "filter and sort GRIB2 inventories into Tawhiri order",
 	Long: `
 Inv dumps and optionally filters and sorts a GRIB2's inventory into the order
 Tawhiri expects. (See "aonui help tawhiri" for details on this ordering.)
