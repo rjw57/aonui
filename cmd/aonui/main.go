@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"sync"
 )
 
@@ -31,6 +32,17 @@ func main() {
 		help(args[1:])
 		return
 	}
+
+	// Set signal handler so that "atexit" functions are called on keyboard
+	// interrupt.
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for s := range c {
+			log.Printf("captured %v, cleaning up", s)
+			exit()
+		}
+	}()
 
 	for _, cmd := range commands {
 		if cmd.Name() == args[0] && cmd.Run != nil {
