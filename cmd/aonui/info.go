@@ -11,7 +11,7 @@ import (
 var cmdInfo = &Command{
 	Run:       runInfo,
 	UsageLine: "info gribfile",
-	Short:     "print information on GRIB2 file",
+	Short:     "print information on GRIB2 files",
 	Long: `
 Info prints information on the shape of data in a GRIB2 file to standard
 output. Gribfile specifies which GRIB2 file is parsed. Output has the following

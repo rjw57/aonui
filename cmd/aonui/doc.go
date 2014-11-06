@@ -12,7 +12,7 @@ Usage:
 The commands are:
 
     sync        fetch wind data from the GFS
-    info        print information on GRIB2 file
+    info        print information on GRIB2 files
     inv         filter and sort GRIB2 inventories into Tawhiri order
     reorder     re-order a GRIB2 file into Tawhiri order
     extract     extract binary data from a GRIB2 message into Tawhiri order
@@ -56,7 +56,7 @@ The utility attempts to be robust in the face of flaky network connections or a
 flaky server by re-trying failed downloads.
 
 
-Print information on GRIB2 file
+Print information on GRIB2 files
 
 Usage:
 
