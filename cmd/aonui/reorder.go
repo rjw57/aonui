@@ -36,7 +36,7 @@ func runReorder(cmd *Command, args []string) {
 	gribFn := args[0]
 	outFn := args[1]
 
-	if err := aonui.ReorderGrib2(gribFn, outFn); err != nil {
+	if err := aonui.TawhiriReorderGrib2(gribFn, outFn); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		setExitStatus(1)
 		return

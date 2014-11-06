@@ -3,6 +3,7 @@
 package aonui
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -16,9 +17,16 @@ var Wgrib2Command = "wgrib2"
 // file. No headers or other information are added to the file which consists
 // of packed native float types in West-to-East, South-to-North,
 // record-by-record ordering. Input and output are specified as filenames.
-func Wgrib2Extract(sourceFn string, destFn string) error {
+// Which records to extract and their order is specified by inv.
+func Wgrib2Extract(inv Inventory, sourceFn string, destFn string) error {
 	// Build wgrib2 command
-	cmd := exec.Command(Wgrib2Command, "-no_header", "-bin", destFn, sourceFn)
+	cmd := exec.Command(Wgrib2Command, "-i", "-no_header", "-bin", destFn, sourceFn)
+
+	// Get stdin pipe
+	wg2Stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
 
 	// Get error pipe
 	wg2Stderr, err := cmd.StderrPipe()
@@ -30,6 +38,16 @@ func Wgrib2Extract(sourceFn string, destFn string) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+
+	// Write inventory into wgrib2
+	go func() {
+		for _, item := range inv {
+			for _, ln := range item.Wgrib2Strings() {
+				fmt.Fprintln(wg2Stdin, ln)
+			}
+		}
+		wg2Stdin.Close()
+	}()
 
 	// Copy standard error from wgrib2
 	go func() { io.Copy(os.Stderr, wg2Stderr) }()

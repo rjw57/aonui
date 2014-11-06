@@ -149,33 +149,14 @@ func (a ByTawhiri) Less(i, j int) bool {
 	return false
 }
 
-// ReorderGrib2 re-orders an on-disk GRIB2 file into Tawhiri order filtering
-// unused records in the process.
-func ReorderGrib2(sourceFn string, destFn string) error {
-	// Load and parse inventory
-	inv, err := Wgrib2Inventory(sourceFn)
+// TawhiriReorderGrib2 re-orders an on-disk GRIB2 file into Tawhiri order
+// filtering unused records in the process.
+func TawhiriReorderGrib2(sourceFn string, destFn string) error {
+	// Load, parse and re-order inventory
+	inv, err := TawhiriOrderedInventory(sourceFn)
 	if err != nil {
-		return errors.New(fmt.Sprint("error loading grib: ", err))
+		return err
 	}
-
-	// Parse items
-	tws := ToTawhiris(inv)
-
-	// Filter invalid records
-	filteredTws := []*TawhiriItem{}
-	for _, tw := range tws {
-		if tw.IsValid {
-			filteredTws = append(filteredTws, tw)
-		}
-	}
-	tws = filteredTws
-
-	// Sort. Note that sorting in this manner is effectively a Swartzian
-	// transform.
-	sort.Sort(ByTawhiri(tws))
-
-	// De-parse
-	inv = FromTawhiris(tws)
 
 	// Open input
 	in, err := os.Open(sourceFn)
@@ -205,4 +186,36 @@ func ReorderGrib2(sourceFn string, destFn string) error {
 
 	// success!
 	return nil
+}
+
+// TawhiriOrderedInventory returns the inventory of the GRIB2 file at sourceFn
+// sorted and filtered into Tawhiri order.
+func TawhiriOrderedInventory(sourceFn string) (Inventory, error) {
+	// Load and parse inventory
+	inv, err := Wgrib2Inventory(sourceFn)
+	if err != nil {
+		return inv, errors.New(fmt.Sprint("error loading grib: ", err))
+	}
+
+	// Parse items
+	tws := ToTawhiris(inv)
+
+	// Filter invalid records
+	filteredTws := []*TawhiriItem{}
+	for _, tw := range tws {
+		if tw.IsValid {
+			filteredTws = append(filteredTws, tw)
+		}
+	}
+	tws = filteredTws
+
+	// Sort. Note that sorting in this manner is effectively a Swartzian
+	// transform.
+	sort.Sort(ByTawhiri(tws))
+
+	// De-parse
+	inv = FromTawhiris(tws)
+
+	// success!
+	return inv, nil
 }
