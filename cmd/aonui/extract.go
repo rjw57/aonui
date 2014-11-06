@@ -1,4 +1,3 @@
-// Extract data from GRIB2 file into Tawhiri-ordered binary data file.
 package main
 
 import (
