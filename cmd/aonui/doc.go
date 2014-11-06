@@ -105,14 +105,10 @@ Extract binary data from a GRIB2 message into Tawhiri order
 
 Usage:
 
-        aonui extract [-tmpdir directory] <ingrib> <outbin>
+        aonui extract <ingrib> <outbin>
 
 Extract will parse a GRIB2 message in the file ingrib and write a raw binary
-dump of native-order floating point values to outbin.
-
-If the -tmpdir option is specified, it gives a directory in which a temporary
-GRIB2 file in the correct format is first generated. If omitted, the directory
-containing outbin is used.
+dump of native-endian floating point values to outbin in Tawhiri order.
 
 See also: aonui help tawhiri
 
