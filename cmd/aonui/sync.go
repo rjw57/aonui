@@ -2,13 +2,10 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -23,68 +20,54 @@ const maximumSimultaneousDownloads = 5
 // Global semaphore used to limit the number of simultaneous downloads
 var fetchSem = make(chan int, maximumSimultaneousDownloads)
 
-type TemporaryFileSource struct {
-	BaseDir string
-	Prefix  string
-
-	files []*os.File
-}
-
-func (tfs *TemporaryFileSource) Create() (*os.File, error) {
-	f, err := ioutil.TempFile(tfs.BaseDir, tfs.Prefix)
-	if err != nil {
-		return nil, err
-	}
-
-	tfs.files = append(tfs.files, f)
-	return f, nil
-}
-
-func (tfs *TemporaryFileSource) Remove(f *os.File) error {
-	// Find index of f in files
-	for fIdx := 0; fIdx < len(tfs.files); fIdx++ {
-		if tfs.files[fIdx] != f {
-			continue
-		}
-
-		// We found f, remove it from our list
-		tfs.files = append(tfs.files[:fIdx], tfs.files[fIdx+1:]...)
-
-		// Remove it from disk
-		if err := os.Remove(f.Name()); err != nil {
-			return err
-		}
-	}
-
-	// If we get here, f was not in files
-	return errors.New("Temporary file was not managed by me")
-}
-
-func (tfs *TemporaryFileSource) RemoveAll() error {
-	var lastErr error
-
-	for _, f := range tfs.files {
-		if err := os.Remove(f.Name()); err != nil {
-			lastErr = err
-		}
-	}
-
-	return lastErr
-}
-
 // Command-line flags
 var (
-	baseDir string
-	highRes bool
-	maxRuns int
+	syncBaseDir string
+	syncHighRes bool
+	syncMaxRuns int
 )
 
-func main() {
-	// Parse command line
-	flag.StringVar(&baseDir, "basedir", ".", "directory to download data to")
-	flag.BoolVar(&highRes, "highres", false, "download 0.25deg data as opposed to 0.5deg")
-	flag.IntVar(&maxRuns, "maxruns", 3, "maximum number of runs to examine before giving up")
-	flag.Parse()
+var cmdSync = &Command{
+	UsageLine: "sync [-basedir directory] [-highres] [-maxruns number]",
+	Short:     "fetch wind data from the GFS",
+	Long: `
+Sync will fetch wind data from the Global Forecast System (GFS) servers in
+GRIB2 data. It will only fetch the subset fo the data needed. It knows how to
+fetch both the current 0.5 degree resolution data and the forthcoming 0.25
+degree data.
+
+Data is saved to the file gfs.YYYMMDDHH.grib2 where YYYY, MM, DD and HH are the
+year, month, day and hour of the run with an appropriate number of leading
+zeros.
+
+The -basedir option specifies the directory data should be downloaded to. If
+omitted, the current working directory is used.
+
+If the -highres option is present, 0.25 degree data will be downloaded. If
+omitted, the 0.5 degree data is downloaded.
+
+The -maxruns options controls how far into the past sync will look for data
+before stopping. The default value of 3 means examine the 3 newest runs on the
+server starting with the newest. If any run is a) incomplete on the server or
+b) already downloaded proceed to the next until the list of runs is exhausted.
+
+The utility attempts to be robust in the face of flaky network connections or a
+flaky server by re-trying failed downloads.
+`,
+}
+
+func init() {
+	cmdSync.Run = runSync // break init cycle
+	cmdSync.Flag.StringVar(&syncBaseDir, "basedir", ".",
+		"directory to download data to")
+	cmdSync.Flag.BoolVar(&syncHighRes, "highres", false,
+		"download 0.25deg data as opposed to 0.5deg")
+	cmdSync.Flag.IntVar(&syncMaxRuns, "maxruns", 3,
+		"maximum number of runs to examine before giving up")
+}
+
+func runSync(cmd *Command, args []string) {
+	baseDir, highRes, maxRuns := syncBaseDir, syncHighRes, syncMaxRuns
 
 	// Which source to use?
 	src := aonui.GFSHalfDegreeDataset
@@ -147,19 +130,11 @@ func syncRun(run *aonui.Run, destFn string) error {
 	}
 
 	// File source for temporary files
-	tfs := TemporaryFileSource{BaseDir: baseDir, Prefix: "dataset-"}
+	tfs := TemporaryFileSource{BaseDir: syncBaseDir, Prefix: "dataset-"}
 	defer tfs.RemoveAll()
 
 	// Make sure to remove temporary files on keyboard interrupt
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		for s := range c {
-			log.Printf("captured %v, deleting temporary files", s)
-			tfs.RemoveAll()
-			os.Exit(1)
-		}
-	}()
+	atexit(func() { tfs.RemoveAll() })
 
 	// Open the output file
 	log.Print("Fetching run to ", destFn)
