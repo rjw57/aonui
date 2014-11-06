@@ -12,6 +12,7 @@ import (
 // The order here is the order in which they are printed by 'aonui help'.
 var commands = []*Command{
 	cmdInv,
+	cmdReorder,
 
 	helpTawhiri,
 }
