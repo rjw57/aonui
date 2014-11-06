@@ -12,6 +12,7 @@ Usage:
 The commands are:
 
     sync        fetch wind data from the GFS
+    info        print information on GRIB2 file
     inv         filter and sort GRIB2 inventories into Tawhiri order
     reorder     re-order a GRIB2 file into Tawhiri order
     extract     extract binary data from a GRIB2 message into Tawhiri order
@@ -53,6 +54,30 @@ b) already downloaded proceed to the next until the list of runs is exhausted.
 
 The utility attempts to be robust in the face of flaky network connections or a
 flaky server by re-trying failed downloads.
+
+
+Print information on GRIB2 file
+
+Usage:
+
+        aonui info gribfile
+
+Info prints information on the shape of data in a GRIB2 file to standard
+output. Gribfile specifies which GRIB2 file is parsed. Output has the following
+form:
+
+	NX=720
+	NY=361
+	NPARAM=3
+	NPRESSURE=47
+	NFCSTHOUR=65
+	PRESSURES=1000,975,950,925,900,875,850,... # etc
+	FCSTHOURS=0,3,6,9,12,15,18,21,24,27,30,... # etc
+
+NX, NY, NPARAM, NPRESSURE and NFCSTHOUR give the sizes of each dimension of the
+data. PRESSURES and FCSTHOURS are comma-separated integers giving the
+particular pressures and forecast hours which correspondt to each point along
+the respective axes.
 
 
 Filter and sort GRIB2 inventories into Tawhiri order

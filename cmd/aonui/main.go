@@ -13,6 +13,7 @@ import (
 // The order here is the order in which they are printed by 'aonui help'.
 var commands = []*Command{
 	cmdSync,
+	cmdInfo,
 	cmdInv,
 	cmdReorder,
 	cmdExtract,
