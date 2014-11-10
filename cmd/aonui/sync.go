@@ -30,10 +30,11 @@ func (sl *StringListValue) Set(s string) error { *sl = strings.Split(s, ","); re
 
 // Command-line flags
 var (
-	syncBaseDir    string
-	syncHighRes    bool
-	syncMaxRuns    int
-	syncParameters StringListValue = []string{"HGT", "UGRD", "VGRD"}
+	syncBaseDir        string
+	syncHighRes        bool
+	syncMaxRuns        int
+	syncParameters     StringListValue = []string{"HGT", "UGRD", "VGRD"}
+	syncFilenamePrefix string
 )
 
 var cmdSync = &Command{
@@ -44,10 +45,6 @@ Sync will fetch wind data from the Global Forecast System (GFS) servers in
 GRIB2 data. It will only fetch the subset of the data needed. It knows how to
 fetch both the current 0.5 degree resolution data and the forthcoming 0.25
 degree data.
-
-Data is saved to the file gfs.YYYMMDDHH.grib2 where YYYY, MM, DD and HH are the
-year, month, day and hour of the run with an appropriate number of leading
-zeros.
 
 Setting base directory
 
@@ -75,6 +72,14 @@ By default, aonui sync will download the HGT, UGRD and VGRD parameters from the
 dataset. Use the -params flag to specify an alternate set. The set of
 parameters to download should be a comma-separated lists.
 
+Specifying filename for download
+
+Data is saved to the file gfs.YYYMMDDHH.grib2 where YYYY, MM, DD and HH are the
+year, month, day and hour of the run with an appropriate number of leading
+zeros.
+
+The -prefix flag sets an additional prefix to add to the front of this name.
+
 `,
 }
 
@@ -87,6 +92,8 @@ func init() {
 	cmdSync.Flag.IntVar(&syncMaxRuns, "maxruns", 3,
 		"maximum number of runs to examine before giving up")
 	cmdSync.Flag.Var(&syncParameters, "params", "list of parameters to download")
+	cmdSync.Flag.StringVar(&syncFilenamePrefix, "prefix", "",
+		"prefix for downloaded files")
 }
 
 func runSync(cmd *Command, args []string) {
@@ -109,7 +116,7 @@ func runSync(cmd *Command, args []string) {
 
 	succeeded := false
 	for _, run := range runs[:maxRuns] {
-		destFn := filepath.Join(baseDir, run.Identifier+".grib2")
+		destFn := filepath.Join(baseDir, syncFilenamePrefix+run.Identifier+".grib2")
 
 		if _, err := os.Stat(destFn); err == nil {
 			log.Print("not overwriting ", destFn)
