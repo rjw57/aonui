@@ -24,11 +24,13 @@ form:
 	NFCSTHOUR=65
 	PRESSURES=1000,975,950,925,900,875,850,... # etc
 	FCSTHOURS=0,3,6,9,12,15,18,21,24,27,30,... # etc
+	RUNTIME=2014102106
 
 NX, NY, NPARAM, NPRESSURE and NFCSTHOUR give the sizes of each dimension of the
 data. PRESSURES and FCSTHOURS are comma-separated integers giving the
 particular pressures and forecast hours which correspondt to each point along
-the respective axes.
+the respective axes. The RUNTIME is the date and time the forecast was run on
+formatted as YYYYMMDDHH.
 
 Note that this command may take some time to complete the first time it is run
 on a file since collating the pressures and forecast hours requires scanning
@@ -59,6 +61,9 @@ func runInfo(cmd *Command, args []string) {
 		setExitStatus(1)
 		return
 	}
+
+	// HACK: Assume the date of the first InventoryItem holds for the rest.
+	runTime := inv[0].When
 
 	// Form a map of parameters, forecast hours and pressures.
 	fcstHourMap := make(map[int]bool)
@@ -138,4 +143,6 @@ func runInfo(cmd *Command, args []string) {
 		fmt.Print(fh)
 	}
 	fmt.Print("\n")
+
+	fmt.Printf("RUNTIME=%v\n", runTime.Format("2006010215"))
 }
