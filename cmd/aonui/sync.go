@@ -20,15 +20,24 @@ const maximumSimultaneousDownloads = 5
 // Global semaphore used to limit the number of simultaneous downloads
 var fetchSem = make(chan int, maximumSimultaneousDownloads)
 
+// A StringListValue wraps a slice of strings and implements the Value intrface
+// for flag allowing it to be used as a command line flag.
+type StringListValue []string
+
+func (sl StringListValue) String() string      { return strings.Join(sl, ",") }
+func (sl StringListValue) Get() interface{}    { return sl }
+func (sl *StringListValue) Set(s string) error { *sl = strings.Split(s, ","); return nil }
+
 // Command-line flags
 var (
-	syncBaseDir string
-	syncHighRes bool
-	syncMaxRuns int
+	syncBaseDir    string
+	syncHighRes    bool
+	syncMaxRuns    int
+	syncParameters StringListValue = []string{"HGT", "UGRD", "VGRD"}
 )
 
 var cmdSync = &Command{
-	UsageLine: "sync [-basedir directory] [-highres] [-maxruns number]",
+	UsageLine: "sync [flags]",
 	Short:     "fetch wind data from the GFS",
 	Long: `
 Sync will fetch wind data from the Global Forecast System (GFS) servers in
@@ -40,19 +49,32 @@ Data is saved to the file gfs.YYYMMDDHH.grib2 where YYYY, MM, DD and HH are the
 year, month, day and hour of the run with an appropriate number of leading
 zeros.
 
-The -basedir option specifies the directory data should be downloaded to. If
+Setting base directory
+
+The -basedir flag specifies the directory data should be downloaded to. If
 omitted, the current working directory is used.
 
-If the -highres option is present, 0.25 degree data will be downloaded. If
+Downloading high reolsution data
+
+If the -highres flag is present, 0.25 degree data will be downloaded. If
 omitted, the 0.5 degree data is downloaded.
 
-The -maxruns options controls how far into the past sync will look for data
-before stopping. The default value of 3 means examine the 3 newest runs on the
-server starting with the newest. If any run is a) incomplete on the server or
-b) already downloaded proceed to the next until the list of runs is exhausted.
+Specifying the oldest run to sync
+
+The -maxruns flag controls how far into the past sync will look for data before
+stopping. The default value of 3 means examine the 3 newest runs on the server
+starting with the newest. If any run is a) incomplete on the server or b)
+already downloaded proceed to the next until the list of runs is exhausted.
 
 The utility attempts to be robust in the face of flaky network connections or a
 flaky server by re-trying failed downloads.
+
+Specifing which parameters to download
+
+By default, aonui sync will download the HGT, UGRD and VGRD parameters from the
+dataset. Use the -params flag to specify an alternate set. The set of
+parameters to download should be a comma-separated lists.
+
 `,
 }
 
@@ -64,6 +86,7 @@ func init() {
 		"download 0.25deg data as opposed to 0.5deg")
 	cmdSync.Flag.IntVar(&syncMaxRuns, "maxruns", 3,
 		"maximum number of runs to examine before giving up")
+	cmdSync.Flag.Var(&syncParameters, "params", "list of parameters to download")
 }
 
 func runSync(cmd *Command, args []string) {
@@ -173,7 +196,7 @@ func syncRun(run *aonui.Run, destFn string) error {
 
 func fetchDatasetsData(tfs *TemporaryFileSource, datasets []*aonui.Dataset) chan *os.File {
 	// Which records are we interested in?
-	paramsOfInterest := []string{"HGT", "UGRD", "VGRD"}
+	paramsOfInterest := syncParameters
 
 	var wg sync.WaitGroup
 	tmpFilesChan := make(chan *os.File)
