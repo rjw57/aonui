@@ -2,10 +2,13 @@
 // Forecast System runs in GRIB format.
 package aonui
 
+import "time"
+
 // Default fetch strategy
 var DefaultFetchStrategy = FetchStrategy{
-	MaximumRetries:  5,
-	TrySleepSeconds: 30,
+	MaximumRetries: 5,
+	RetrySleep:     30 * time.Second,
+	FetchTimeout:   5 * time.Minute,
 }
 
 // The proposed 0.25 degree resolution GRIBs from the Global Forecast System (GFS).

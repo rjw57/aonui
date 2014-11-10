@@ -4,7 +4,6 @@ package aonui
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -15,27 +14,15 @@ import (
 // FetchStrategy represents a strategy for fetching data from servers which may
 // be unreliable.
 type FetchStrategy struct {
-	// Maximum retry count when fetching URLs
-	MaximumRetries int
-
-	// Time to sleep between tries in seconds
-	TrySleepSeconds int
-}
-
-// TrySleepDuration will return a time.Duration which represents the number of
-// seconds in the TrySleepSeconds field.
-func (s *FetchStrategy) TrySleepDuration() time.Duration {
-	d, err := time.ParseDuration(fmt.Sprint(s.TrySleepSeconds, "s"))
-	if err != nil {
-		log.Fatal("Unexpected error parsing duration: ", err)
-	}
-	return d
+	MaximumRetries int           // Maximum retry count when fetching URLs
+	RetrySleep     time.Duration // Time to sleep between tries
+	FetchTimeout   time.Duration // Timeout when fetching individual datasets
 }
 
 // Fetch data via HTTP with retries and sleep times. Returns http.Response and
 // error as per http.Get().
 func getURLWithStrategy(url string, strategy FetchStrategy) (*http.Response, error) {
-	sleepDuration := strategy.TrySleepDuration()
+	sleepDuration := strategy.RetrySleep
 	nTries := strategy.MaximumRetries
 	if nTries < 1 {
 		nTries = 1

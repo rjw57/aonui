@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // A Dataset is a description of an individual GRIB dataset from a run
@@ -82,18 +83,54 @@ func (ds *Dataset) FetchAndWriteRecords(output io.Writer, records []*InventoryIt
 	}
 	req.Header.Add("Range", "bytes="+strings.Join(rangeSpecs, ","))
 
-	// Fire off request
-	resp, err := client.Do(req)
-	if err != nil {
+	// We perform request and copy in a separate goroutine and also have a
+	// timeout. Set the timeout from the fetch strategy.
+	timeout := make(chan bool, 1)
+	fetchErr := make(chan error, 1)
+	done := make(chan int64, 1)
+
+	go func() {
+		// Fire off request
+		resp, err := client.Do(req)
+		if err != nil {
+			fetchErr <- err
+			return
+		}
+		defer resp.Body.Close()
+
+		// Check we get partial content
+		if resp.StatusCode != http.StatusPartialContent {
+			fetchErr <- fmt.Errorf("expected HTTP partial content, got %v",
+				resp.StatusCode)
+			return
+		}
+
+		// Everything looks good, start copying
+		nWritten, err := io.Copy(output, resp.Body)
+		if err != nil {
+			fetchErr <- err
+			return
+		}
+
+		// Signal number of bytes written
+		done <- nWritten
+	}()
+
+	// Start timeout
+	go func() {
+		time.Sleep(ds.Run.Source.FetchStrategy.FetchTimeout)
+		timeout <- true
+	}()
+
+	select {
+	case err := <-fetchErr:
+		// There was some error when fetching
 		return 0, err
+	case nWritten := <-done:
+		// All was good
+		return nWritten, nil
+	case <-timeout:
+		// Request timed out
+		return 0, errors.New("Request timed out")
 	}
-	defer resp.Body.Close()
-
-	// Check we get partial content
-	if resp.StatusCode != http.StatusPartialContent {
-		return 0, fmt.Errorf("expected HTTP partial content, got %v", resp.StatusCode)
-	}
-
-	// Everything looks good, start copying
-	return io.Copy(output, resp.Body)
 }
