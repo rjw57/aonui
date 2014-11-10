@@ -30,30 +30,46 @@ Fetch wind data from the GFS
 
 Usage:
 
-        aonui sync [-basedir directory] [-highres] [-maxruns number]
+        aonui sync [flags]
 
 Sync will fetch wind data from the Global Forecast System (GFS) servers in
 GRIB2 data. It will only fetch the subset of the data needed. It knows how to
 fetch both the current 0.5 degree resolution data and the forthcoming 0.25
 degree data.
 
+Setting base directory
+
+The -basedir flag specifies the directory data should be downloaded to. If
+omitted, the current working directory is used.
+
+Downloading high reolsution data
+
+If the -highres flag is present, 0.25 degree data will be downloaded. If
+omitted, the 0.5 degree data is downloaded.
+
+Specifying the oldest run to sync
+
+The -maxruns flag controls how far into the past sync will look for data before
+stopping. The default value of 3 means examine the 3 newest runs on the server
+starting with the newest. If any run is a) incomplete on the server or b)
+already downloaded proceed to the next until the list of runs is exhausted.
+
+The utility attempts to be robust in the face of flaky network connections or a
+flaky server by re-trying failed downloads.
+
+Specifing which parameters to download
+
+By default, aonui sync will download the HGT, UGRD and VGRD parameters from the
+dataset. Use the -params flag to specify an alternate set. The set of
+parameters to download should be a comma-separated lists.
+
+Specifying filename for download
+
 Data is saved to the file gfs.YYYMMDDHH.grib2 where YYYY, MM, DD and HH are the
 year, month, day and hour of the run with an appropriate number of leading
 zeros.
 
-The -basedir option specifies the directory data should be downloaded to. If
-omitted, the current working directory is used.
-
-If the -highres option is present, 0.25 degree data will be downloaded. If
-omitted, the 0.5 degree data is downloaded.
-
-The -maxruns options controls how far into the past sync will look for data
-before stopping. The default value of 3 means examine the 3 newest runs on the
-server starting with the newest. If any run is a) incomplete on the server or
-b) already downloaded proceed to the next until the list of runs is exhausted.
-
-The utility attempts to be robust in the face of flaky network connections or a
-flaky server by re-trying failed downloads.
+The -prefix flag sets an additional prefix to add to the front of this name.
 
 
 Extract binary data from a GRIB2 message into Tawhiri order
@@ -85,11 +101,13 @@ form:
 	NFCSTHOUR=65
 	PRESSURES=1000,975,950,925,900,875,850,... # etc
 	FCSTHOURS=0,3,6,9,12,15,18,21,24,27,30,... # etc
+	RUNTIME=2014102106
 
 NX, NY, NPARAM, NPRESSURE and NFCSTHOUR give the sizes of each dimension of the
 data. PRESSURES and FCSTHOURS are comma-separated integers giving the
 particular pressures and forecast hours which correspondt to each point along
-the respective axes.
+the respective axes. The RUNTIME is the date and time the forecast was run on
+formatted as YYYYMMDDHH.
 
 Note that this command may take some time to complete the first time it is run
 on a file since collating the pressures and forecast hours requires scanning
