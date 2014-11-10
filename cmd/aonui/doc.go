@@ -113,6 +113,20 @@ Note that this command may take some time to complete the first time it is run
 on a file since collating the pressures and forecast hours requires scanning
 through the entire GRIB2 message.
 
+JSON formatted output
+
+If the -json flag is specified, information is written to standard output in
+JSON format. The output looks similar to:
+
+	{
+	  "width": 720,
+	  "height": 361,
+	  "parameters": [ "HGT", "UGRD", "VGRD" ],
+	  "pressures": [ 875, 825, <etc> ],
+	  "forecastHours": [ 0, 3, <etc> ],
+	  "runTime": "2014-11-10T12:00:00Z"
+	}
+
 
 Filter and sort GRIB2 inventories into Tawhiri order
 
